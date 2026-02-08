@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 
 from agent.prompts import build_system_prompt, build_user_message
 from agent.state import AgentState
-from clients import get_tool_calling_model
+from clients import get_chat_model
 from chunking.semantic import chunk_with_fallback
 from settings import get_settings
 from misc.truncator import Truncator, TruncatorConfig
@@ -210,7 +210,7 @@ def call_llm_node(state: AgentState) -> dict[str, Any]:
         Updates to the state with the LLM response.
     """
     messages = state.get("messages", [])
-    llm = get_tool_calling_model()
+    llm = get_chat_model()
     iteration = state.get("iteration_count", 0)
 
     # ── First attempt ──
