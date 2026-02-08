@@ -1,6 +1,10 @@
+import logging
+
 from langchain_experimental.text_splitter import SemanticChunker
 
 from clients import get_embeddings
+
+logger = logging.getLogger(__name__)
 
 
 def semantic_chunk(
@@ -94,7 +98,7 @@ def chunk_with_fallback(
     except Exception as e:
         from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-        print(f"Warning: Semantic chunking failed ({e}). Using fallback recursive.")
+        logger.warning("Semantic chunking failed (%s). Using fallback recursive.", e)
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
