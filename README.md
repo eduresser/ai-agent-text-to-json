@@ -88,15 +88,18 @@ text-to-json --file doc.txt --max-iterations 30
 
 ```python
 from main import extract
+import rich
 
 # Simple extraction (no schema — agent infers structure)
+
 result = extract(
     text="John Doe, 30 years old, works at Acme Corp as an engineer.",
 )
-print(result["json_document"])
-# {"name": "John Doe", "age": 30, "company": "Acme Corp", "role": "engineer"}
+rich.print(result["json_document"])
+# {'name': 'John Doe', 'age': 30, 'occupation': 'engineer', 'company': 'Acme Corp'}
 
 # With a JSON Schema
+
 schema = {
     "type": "object",
     "properties": {
@@ -116,17 +119,41 @@ schema = {
 }
 
 result = extract(
-    text=long_document,
+    text="""
+    John Doe, 30 years old, works at Acme Corp as an engineer.
+    Jane Smith, 25 years old, works at Blue Corp as a software engineer.
+    Jim Beam, 35 years old, works at Green Corp as a marketing manager.
+    Jill Johnson, 28 years old, works at Red Corp as a product manager.
+    Jack Doe, 32 years old, works at Yellow Corp as a sales manager.
+    Jane Doe, 27 years old, works at Blue Corp as a sales manager.
+    Jim Doe, 33 years old, works at Green Corp as a sales manager.
+    Jill Doe, 29 years old, works at Red Corp as a sales manager.
+    """,
     schema=schema,
     show_progress=True,  # Rich live display
 )
 
 # Access extracted document
-json_doc = result["json_document"]
+
+rich.print(result["json_document"])
+# {
+#    "employees": [
+#        {"name": "John Doe", "age": 30, "company": "Acme Corp"},
+#        {"name": "Jane Smith", "age": 25, "company": "Blue Corp"},
+#        {"name": "Jim Beam", "age": 35, "company": "Green Corp"},
+#        {"name": "Jill Johnson", "age": 28, "company": "Red Corp"},
+#        {"name": "Jack Doe", "age": 32, "company": "Yellow Corp"},
+#        {"name": "Jane Doe", "age": 27, "company": "Blue Corp"},
+#        {"name": "Jim Doe", "age": 33, "company": "Green Corp"},
+#        {"name": "Jill Doe", "age": 29, "company": "Red Corp"}
+#    ]
+# }
 
 # Access metadata
-print(f"Chunks processed: {result['metadata']['total_chunks']}")
-print(f"Token usage: {result['metadata']['token_usage']}")
+rich.print(f"\nChunks processed:")
+rich.print(result['metadata']['total_chunks'])
+rich.print(f"\nToken usage:")
+rich.print(result['metadata']['token_usage'])
 ```
 
 ## Architecture
