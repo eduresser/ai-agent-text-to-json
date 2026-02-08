@@ -49,8 +49,8 @@ def extract(
         from agent.graph import rich_extract
         result = rich_extract(text, schema, max_iterations_per_chunk)
     else:
-        from agent.graph import extract
-        result = extract(text, schema, max_iterations_per_chunk)
+        from agent.graph import extract as normal_extract
+        result = normal_extract(text, schema, max_iterations_per_chunk)
 
     reset_clients_cache()
     reset_settings_cache()
