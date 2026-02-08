@@ -25,16 +25,17 @@ Works with or without a JSON Schema: provide one to enforce a specific structure
 
 The agent employs several mechanisms to prevent the LLM from hallucinating, duplicating, or destroying data:
 
-| Mechanism                           | Description                                                                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Destructive overwrite detection** | Pre-validates patches to block `add` operations that would replace existing arrays or the entire document.                 |
-| **Shrinkage guard**                 | Rejects patch batches that reduce the document size by more than 50%, catching accidental replacements of containers.      |
-| **Type downgrade prevention**       | Blocks replacing an object/array with a scalar value, including `add` of a scalar on an existing array.                    |
-| **Mandatory duplicate check**       | `search_pointer` is described as mandatory before creating list items, so the LLM searches for existing entities first.    |
-| **Schema enforcement**              | Every `add`/`replace` value is validated against the JSON Schema (type, format, required fields, `additionalProperties`).  |
-| **Prescriptive error messages**     | When a patch fails, the error message tells the LLM _exactly_ how to fix it (e.g., "use `/-` to append").                 |
-| **Context trimming with retry**     | If the LLM stops producing tool calls (context full), old message rounds are trimmed and the call is retried.              |
-| **Forced tool calling**             | `tool_choice="required"` ensures the LLM always uses tools instead of generating free-form text.                           |
+| Mechanism                                 | Description                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Destructive overwrite detection** | Pre-validates patches to block `add` operations that would replace existing arrays or the entire document.                    |
+| **Shrinkage guard**                 | Rejects patch batches that reduce the document size by more than 50%, catching accidental replacements of containers.           |
+| **Type downgrade prevention**       | Blocks replacing an object/array with a scalar value, including `add` of a scalar on an existing array.                       |
+| **Automatic deduplication**         | Before appending to an array, items are compared (canonical JSON) against existing entries and the current batch.               |
+| **Mandatory duplicate check**       | `search_pointer` is described as mandatory before creating list items, so the LLM searches for existing entities first.       |
+| **Schema enforcement**              | Every `add`/`replace` value is validated against the JSON Schema (type, format, required fields, `additionalProperties`). |
+| **Prescriptive error messages**     | When a patch fails, the error message tells the LLM_exactly_ how to fix it (e.g., "use `/-` to append").                      |
+| **Context trimming with retry**     | If the LLM stops producing tool calls (context full), old message rounds are trimmed and the call is retried.                   |
+| **Forced tool calling**             | `tool_choice="required"` ensures the LLM always uses tools instead of generating free-form text.                              |
 
 ## Installation
 
@@ -160,12 +161,12 @@ flowchart TB
 
 ### Available Tools
 
-| Tool              | Description                                                                                                                  |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `inspect_keys`    | Returns keys of an object or length of an array at a JSON Pointer path. Supports both the document and the schema as source. |
-| `read_value`      | Reads the value at a specific JSON Pointer path, with configurable truncation for depth, string length, and array/object size. |
-| `search_pointer`  | Searches keys or values in the document/schema and returns matching JSON Pointers. Supports fuzzy matching.                  |
-| `apply_patches`   | Applies a batch of RFC 6902 JSON Patch operations (add, replace, remove, move, copy) with full schema validation.            |
+| Tool                | Description                                                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `inspect_keys`    | Returns keys of an object or length of an array at a JSON Pointer path. Supports both the document and the schema as source.      |
+| `read_value`      | Reads the value at a specific JSON Pointer path, with configurable truncation for depth, string length, and array/object size.    |
+| `search_pointer`  | Searches keys or values in the document/schema and returns matching JSON Pointers. Supports fuzzy matching.                       |
+| `apply_patches`   | Applies a batch of RFC 6902 JSON Patch operations (add, replace, remove, move, copy) with full schema validation.                 |
 | `update_guidance` | Finalizes the current chunk and creates a rich context object for the next chunk (sections snapshot, pending data, expectations). |
 
 ## Project Structure
