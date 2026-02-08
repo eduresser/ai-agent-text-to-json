@@ -84,7 +84,7 @@ def create_progress_display(
     }
 
     table = Table(
-        title="[bold cyan]Text-to-JSON Agent[/bold cyan]",
+        title="[bold cyan]Robust Text-to-JSON Agent[/bold cyan]",
         box=box.ROUNDED,
         show_header=False,
         expand=True,
