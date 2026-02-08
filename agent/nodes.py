@@ -382,6 +382,9 @@ def execute_tools_node(state: AgentState) -> dict[str, Any]:
             content = truncator.truncate_with_limit(
                 result, settings.TRUNCATE_READ_VALUE_LIMIT
             )
+        elif name == "apply_patches":
+            response = {k: v for k, v in result.items() if k != "finalDoc"}
+            content = json.dumps(response, ensure_ascii=False, default=str)
         else:
             content = json.dumps(result, ensure_ascii=False, default=str)
 
@@ -451,6 +454,81 @@ def _make_error(
         "pointer": path,
         "message": message,
     }
+
+
+def _filter_duplicate_appends(
+    patches: list[dict[str, Any]],
+    document: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """
+    Filter out 'add' operations that would append an item identical to one
+    already present in the target array (or already queued in the same batch).
+
+    Uses canonical JSON serialization (sorted keys) for O(1) lookups.
+
+    Args:
+        patches: List of JSON Patch operations.
+        document: Current JSON document.
+
+    Returns:
+        Tuple of (filtered_patches, skipped_messages).
+    """
+    filtered: list[dict[str, Any]] = []
+    skipped: list[str] = []
+
+    # Pre-build canonical sets for arrays already in the document.
+    # Lazily populated per array_path on first access.
+    _existing_cache: dict[str, set[str]] = {}
+
+    def _get_existing_set(array_path: str) -> set[str]:
+        if array_path not in _existing_cache:
+            found, current_array = _resolve_path(document, array_path)
+            if found and isinstance(current_array, list):
+                _existing_cache[array_path] = {
+                    json.dumps(item, sort_keys=True, ensure_ascii=False, default=str)
+                    for item in current_array
+                }
+            else:
+                _existing_cache[array_path] = set()
+        return _existing_cache[array_path]
+
+    # Track items queued for addition in this batch (catches intra-batch dupes)
+    batch_additions: dict[str, set[str]] = {}
+
+    for patch in patches:
+        if not (
+            isinstance(patch, dict)
+            and patch.get("op") == "add"
+            and isinstance(patch.get("path"), str)
+            and patch["path"].endswith("/-")
+        ):
+            # Not an array-append operation — keep as-is
+            filtered.append(patch)
+            continue
+
+        array_path = patch["path"][:-2]  # strip trailing /-
+        new_value = patch.get("value")
+        canonical = json.dumps(
+            new_value, sort_keys=True, ensure_ascii=False, default=str
+        )
+
+        existing_set = _get_existing_set(array_path)
+        batch_set = batch_additions.get(array_path, set())
+
+        if canonical in existing_set or canonical in batch_set:
+            preview = canonical[:120]
+            skipped.append(
+                f'DUPLICATE SKIPPED at "{patch["path"]}": '
+                f"identical item already exists in the array. "
+                f"Preview: {preview}"
+            )
+            continue
+
+        # Accept the patch and record it for intra-batch dedup
+        batch_additions.setdefault(array_path, set()).add(canonical)
+        filtered.append(patch)
+
+    return filtered, skipped
 
 
 def _pre_validate_patches(
@@ -745,7 +823,20 @@ def _dispatch_tool(
                 "errors": pre_errors,
                 "finalDoc": document,
             }
-        return apply_patches(document, patches, target_schema)
+        # Filter out exact-duplicate appends (same item already in array)
+        patches, dup_messages = _filter_duplicate_appends(patches, document)
+        if not patches:
+            # All patches were duplicates — nothing to apply
+            return {
+                "ok": True,
+                "errors": [],
+                "finalDoc": document,
+                "duplicates_skipped": dup_messages,
+            }
+        result = apply_patches(document, patches, target_schema)
+        if dup_messages:
+            result["duplicates_skipped"] = dup_messages
+        return result
 
     if name == "update_guidance":
         return update_guidance(
