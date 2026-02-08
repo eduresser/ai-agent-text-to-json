@@ -75,8 +75,6 @@ class AgentState(TypedDict, total=False):
 
     guidance: Guidance
 
-    # Messages include SystemMessage, HumanMessage, AIMessage (with tool_calls),
-    # and ToolMessage responses. The reducer handles chunk resets.
     messages: Annotated[list[BaseMessage], messages_reducer]
 
     is_chunk_finalized: bool
