@@ -17,7 +17,7 @@ Works with or without a JSON Schema: provide one to enforce a specific structure
 - **Iterative ReAct Loop**: each chunk is processed through a Think → Act → Observe loop where the LLM uses tools to inspect, search, and modify the JSON document.
 - **Incremental Construction**: the JSON document is built progressively with JSON Patch operations — each chunk adds to (or corrects) what previous chunks produced.
 - **Cross-Chunk Continuity**: a _Guidance_ object carries context between chunks (open sections, pending data, expectations), so the agent seamlessly continues extraction across chunk boundaries.
-- **Schema Validation**: when a schema is provided, every patch operation is validated against it — type checks, required fields, format validation, `$ref` resolution, and more.
+- **Schema Validation**: when a schema is provided, every patch operation is validated against it — type checks, required fields, format validation, `$ref` resolution, `anyOf`/`oneOf`/`allOf` composition, and more.
 - **Smart Truncation**: large documents and tool responses are intelligently truncated (strings, arrays, objects) to fit the LLM context window without losing critical structural information.
 - **Rich CLI**: live progress visualization with Rich showing current chunk, iteration, tool usage, and token consumption.
 
@@ -25,16 +25,16 @@ Works with or without a JSON Schema: provide one to enforce a specific structure
 
 The agent employs several mechanisms to prevent the LLM from hallucinating, duplicating, or destroying data:
 
-| Mechanism                                 | Description                                                                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Destructive overwrite detection** | Pre-validates patches to block `add` operations that would replace existing arrays or the entire document.                    |
-| **Shrinkage guard**                 | Rejects patch batches that reduce the document size by more than 50%, catching accidental replacements of containers.           |
-| **Type downgrade prevention**       | Blocks replacing an object/array with a scalar value.                                                                           |
-| **Mandatory duplicate check**       | `search_pointer` is described as mandatory before creating list items, so the LLM searches for existing entities first.       |
-| **Schema enforcement**              | Every `add`/`replace` value is validated against the JSON Schema (type, format, required fields, `additionalProperties`). |
-| **Prescriptive error messages**     | When a patch fails, the error message tells the LLM_exactly_ how to fix it (e.g., "use `/-` to append").                      |
-| **Context trimming with retry**     | If the LLM stops producing tool calls (context full), old message rounds are trimmed and the call is retried.                   |
-| **Forced tool calling**             | `tool_choice="required"` ensures the LLM always uses tools instead of generating free-form text.                              |
+| Mechanism                           | Description                                                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Destructive overwrite detection** | Pre-validates patches to block `add` operations that would replace existing arrays or the entire document.                 |
+| **Shrinkage guard**                 | Rejects patch batches that reduce the document size by more than 50%, catching accidental replacements of containers.      |
+| **Type downgrade prevention**       | Blocks replacing an object/array with a scalar value, including `add` of a scalar on an existing array.                    |
+| **Mandatory duplicate check**       | `search_pointer` is described as mandatory before creating list items, so the LLM searches for existing entities first.    |
+| **Schema enforcement**              | Every `add`/`replace` value is validated against the JSON Schema (type, format, required fields, `additionalProperties`).  |
+| **Prescriptive error messages**     | When a patch fails, the error message tells the LLM _exactly_ how to fix it (e.g., "use `/-` to append").                 |
+| **Context trimming with retry**     | If the LLM stops producing tool calls (context full), old message rounds are trimmed and the call is retried.              |
+| **Forced tool calling**             | `tool_choice="required"` ensures the LLM always uses tools instead of generating free-form text.                           |
 
 ## Installation
 
@@ -160,12 +160,12 @@ flowchart TB
 
 ### Available Tools
 
-| Tool                | Description                                                                                                                       |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `inspect_keys`    | Returns keys of an object or length of an array at a JSON Pointer path. Supports both the document and the schema as source.      |
-| `read_value`      | Reads the value at a specific JSON Pointer path, with configurable truncation for depth, string length, and array/object size.    |
-| `search_pointer`  | Searches keys or values in the document/schema and returns matching JSON Pointers. Supports fuzzy matching.                       |
-| `apply_patches`   | Applies a batch of RFC 6902 JSON Patch operations (add, replace, remove, move, copy) with full schema validation.                 |
+| Tool              | Description                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `inspect_keys`    | Returns keys of an object or length of an array at a JSON Pointer path. Supports both the document and the schema as source. |
+| `read_value`      | Reads the value at a specific JSON Pointer path, with configurable truncation for depth, string length, and array/object size. |
+| `search_pointer`  | Searches keys or values in the document/schema and returns matching JSON Pointers. Supports fuzzy matching.                  |
+| `apply_patches`   | Applies a batch of RFC 6902 JSON Patch operations (add, replace, remove, move, copy) with full schema validation.            |
 | `update_guidance` | Finalizes the current chunk and creates a rich context object for the next chunk (sections snapshot, pending data, expectations). |
 
 ## Project Structure
@@ -179,8 +179,7 @@ text-to-json/
 │   ├── graph.py               # LangGraph state machine definition
 │   ├── state.py               # AgentState and Guidance TypedDicts
 │   ├── nodes.py               # Graph node functions (chunk, call_llm, execute_tools, etc.)
-│   ├── prompts.py             # System prompt and user message builders
-│   └── tools.py               # LangChain tool definitions (bound to LLM)
+│   └── prompts.py             # System prompt and user message builders
 ├── tools/
 │   ├── definitions.py         # Tool definitions with @tool decorators and ALL_TOOLS list
 │   ├── inspect_keys.py        # JsonInspector — navigate and summarize JSON structure
@@ -195,7 +194,30 @@ text-to-json/
 │   └── rich_display.py        # Rich live progress, panels, token tracking
 ├── misc/
 │   └── truncator.py           # Smart JSON truncator (strings, arrays, objects)
+├── tests/
+│   ├── conftest.py            # Shared fixtures (schemas, documents)
+│   ├── test_apply_patches.py  # SchemaPatchChecker, RFC 6902, schema validation, oneOf/allOf
+│   ├── test_truncator.py      # Smart truncation strategies
+│   ├── test_inspect_keys.py   # JSON inspection and navigation
+│   ├── test_search_pointer.py # Key/value search, fuzzy matching
+│   ├── test_read_value.py     # Value reading with truncation
+│   ├── test_nodes.py          # Pre-validation, message trimming, helpers
+│   ├── test_state.py          # State reducers (messages, token usage)
+│   ├── test_chunking.py       # Chunk merging, fallback splitting
+│   └── test_update_guidance.py # Guidance creation
 └── pyproject.toml
+```
+
+## Testing
+
+Run the full test suite with pytest:
+
+```bash
+# Using uv
+uv run pytest tests/ -v
+
+# Or directly
+pytest tests/ -v
 ```
 
 ## License
