@@ -1,20 +1,3 @@
-"""Smart JSON truncator with character limit.
-
-Faithful Python port of the N8N Truncator class. Progressively truncates
-JSON data to fit within a character limit using three strategies applied
-in order:
-
-1. **String truncation** – shorten long strings (binary-search for the
-   optimal max length that still fits the limit).
-2. **Array collapse** – remove middle items from arrays at the deepest
-   level first, replacing with a ``...`` marker.
-3. **Object collapse** – remove middle keys from objects at the deepest
-   level first, replacing with a ``...`` marker.
-
-The output is a custom-formatted string (not standard JSON) that uses
-``...``, ``[...]`` and ``{...}`` markers for truncated sections.
-"""
-
 from __future__ import annotations
 
 import json
@@ -78,7 +61,7 @@ class Truncator:
         return text.replace("...,\n", "...\n")
 
     # ------------------------------------------------------------------
-    # Custom stringify (mirrors the JS #customStringify)
+    # Custom stringify
     # ------------------------------------------------------------------
 
     def _custom_stringify(self, data: Any, indent_level: int = 0) -> str:
