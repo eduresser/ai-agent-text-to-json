@@ -512,6 +512,16 @@ def _pre_validate_patches(
                         f'To APPEND, use "{path}/-": '
                         f'{{"op":"add","path":"{path}/-","value":{{...}}}}',
                     ))
+                else:
+                    # Scalar value replacing an array
+                    errors.append(_make_error(
+                        i, patch, path,
+                        f'TYPE DOWNGRADE: "{path}" already contains an '
+                        f"array with {n} items. Your \"add\" would REPLACE "
+                        f"the entire array with a {type(value).__name__}. "
+                        f'To APPEND, use "{path}/-": '
+                        f'{{"op":"add","path":"{path}/-","value":...}}',
+                    ))
                 continue
 
         # ── 3. "add" at root → replaces entire document ──
