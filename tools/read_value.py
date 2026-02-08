@@ -143,7 +143,7 @@ class ReadValue:
     def _parse_json_pointer(cls, path: str) -> list[str]:
         if not isinstance(path, str):
             raise ValueError("Invalid path: must be a string")
-        if path == "":
+        if path == "" or path == "/":
             return []
         if path[0] != "/":
             path = "/" + path
