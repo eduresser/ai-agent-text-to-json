@@ -94,8 +94,10 @@ def extract(
         >>> print(result["json_document"])
         {"name": "John Doe", "age": 30, "company": "Acme Corp"}
     """
+    settings = get_settings()
+
     if max_iterations_per_chunk is None:
-        max_iterations_per_chunk = get_settings().MAX_ITERATIONS_PER_CHUNK
+        max_iterations_per_chunk = settings.MAX_ITERATIONS_PER_CHUNK
 
     app = create_graph()
 
@@ -103,6 +105,7 @@ def extract(
         "text": text,
         "target_schema": schema,
         "max_iterations": max_iterations_per_chunk,
+        "max_chunk_retries": settings.MAX_CHUNK_RETRIES,
         "chunks": [],
         "current_chunk_idx": 0,
         "json_document": {},
@@ -110,6 +113,7 @@ def extract(
         "messages": [],
         "is_chunk_finalized": False,
         "iteration_count": 0,
+        "chunk_retry_count": 0,
         "token_usage": {},
     }
 

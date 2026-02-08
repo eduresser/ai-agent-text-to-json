@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -14,6 +15,8 @@ from tools.inspect_keys import inspect_keys
 from tools.read_value import read_value
 from tools.search_pointer import search_pointer
 from tools.update_guidance import update_guidance
+
+logger = logging.getLogger(__name__)
 
 
 def _get_truncator() -> Truncator:
@@ -84,6 +87,8 @@ def prepare_chunk_node(state: AgentState) -> dict[str, Any]:
         return {"current_chunk": ""}
 
     current_chunk = chunks[current_idx]
+    retry_count = state.get("chunk_retry_count", 0)
+    max_retries = state.get("max_chunk_retries", 0)
 
     system_prompt = build_system_prompt(
         target_schema=state.get("target_schema"),
@@ -96,6 +101,23 @@ def prepare_chunk_node(state: AgentState) -> dict[str, Any]:
         chunk_index=current_idx,
         total_chunks=len(chunks),
     )
+
+    if retry_count > 0:
+        logger.warning(
+            "Chunk %d/%d: retry %d/%d (hit max iterations without finalizing)",
+            current_idx + 1,
+            len(chunks),
+            retry_count,
+            max_retries,
+        )
+        user_message += (
+            f"\n\n⚠️ RETRY ATTEMPT {retry_count}/{max_retries}: "
+            f"The previous processing of this chunk reached the maximum "
+            f"number of iterations without finalizing. The document already "
+            f"contains partial progress from the previous attempt. "
+            f"Focus on extracting any remaining data and MAKE SURE to call "
+            f"update_guidance to finalize this chunk."
+        )
 
     return {
         "current_chunk": current_chunk,
@@ -857,6 +879,11 @@ def finalize_chunk_node(state: AgentState) -> dict[str, Any]:
     """
     Node that finalizes the current chunk processing and advances to the next.
 
+    If the chunk was force-finalized (hit max_iterations without the LLM
+    calling update_guidance) and there are retries remaining, the chunk index
+    is NOT advanced so that ``prepare_chunk_node`` will reprocess the same
+    chunk with fresh messages but the accumulated document state.
+
     Clears any chunk-level error so it doesn't prevent subsequent chunks
     from being processed.
 
@@ -867,10 +894,46 @@ def finalize_chunk_node(state: AgentState) -> dict[str, Any]:
         Updates to the state for the next chunk.
     """
     current_idx = state.get("current_chunk_idx", 0)
+    is_properly_finalized = state.get("is_chunk_finalized", False)
+    retry_count = state.get("chunk_retry_count", 0)
+    max_retries = state.get("max_chunk_retries", 0)
 
+    # Check if chunk was force-finalized (max iterations or error, without
+    # the LLM explicitly calling update_guidance).
+    # Note: is_chunk_finalized is set to True only when update_guidance is
+    # called in execute_tools_node. When is_chunk_done routes here due to
+    # max_iterations, is_chunk_finalized remains False.
+    chunks = state.get("chunks", [])
+    total_chunks = len(chunks)
+
+    if not is_properly_finalized and retry_count < max_retries:
+        # Retry: keep same chunk index, increment retry counter
+        logger.info(
+            "Chunk %d/%d: scheduling retry %d/%d",
+            current_idx + 1,
+            total_chunks,
+            retry_count + 1,
+            max_retries,
+        )
+        return {
+            "is_chunk_finalized": False,
+            "chunk_retry_count": retry_count + 1,
+            "error": None,
+        }
+
+    if not is_properly_finalized and retry_count >= max_retries:
+        logger.warning(
+            "Chunk %d/%d: max retries exhausted (%d), advancing to next chunk",
+            current_idx + 1,
+            total_chunks,
+            max_retries,
+        )
+
+    # Normal finalization or retries exhausted: advance to next chunk
     return {
         "current_chunk_idx": current_idx + 1,
         "is_chunk_finalized": False,
+        "chunk_retry_count": 0,
         "error": None,
     }
 

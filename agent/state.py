@@ -82,6 +82,8 @@ class AgentState(TypedDict, total=False):
     is_chunk_finalized: bool
     iteration_count: int
     max_iterations: int
+    chunk_retry_count: int
+    max_chunk_retries: int
 
     token_usage: Annotated[dict[str, int], token_usage_reducer]
 
