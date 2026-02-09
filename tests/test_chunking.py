@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from chunking.semantic import _merge_small_chunks, chunk_with_fallback
+from text_to_json.chunking.semantic import _merge_small_chunks, chunk_with_fallback
 
 
 # ======================================================================
@@ -70,7 +70,7 @@ class TestChunkWithFallback:
         text = "Hello world. " * 1000  # ~13k chars
 
         with patch(
-            "chunking.semantic.semantic_chunk",
+            "text_to_json.chunking.semantic.semantic_chunk",
             side_effect=Exception("Embedding API failed"),
         ):
             result = chunk_with_fallback(text)
@@ -84,7 +84,7 @@ class TestChunkWithFallback:
         text = "Short text."
 
         with patch(
-            "chunking.semantic.semantic_chunk",
+            "text_to_json.chunking.semantic.semantic_chunk",
             side_effect=Exception("fail"),
         ):
             result = chunk_with_fallback(text)
@@ -95,7 +95,7 @@ class TestChunkWithFallback:
         text = "Test. " * 500
 
         with patch(
-            "chunking.semantic.semantic_chunk",
+            "text_to_json.chunking.semantic.semantic_chunk",
             return_value=["chunk 1", "chunk 2"],
         ):
             result = chunk_with_fallback(text)

@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from misc.truncator import Truncator, TruncatorConfig
+from text_to_json.misc.truncator import Truncator, TruncatorConfig
 
 
 @pytest.fixture

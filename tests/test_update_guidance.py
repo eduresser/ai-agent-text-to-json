@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tools.update_guidance import update_guidance
+from text_to_json.tools.update_guidance import update_guidance
 
 
 class TestUpdateGuidance:

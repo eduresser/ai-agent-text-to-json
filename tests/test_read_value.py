@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.read_value import read_value
+from text_to_json.tools.read_value import read_value
 
 
 @pytest.fixture

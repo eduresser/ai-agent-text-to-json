@@ -6,7 +6,7 @@ import pytest
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
-from agent.nodes import (
+from text_to_json.agent.nodes import (
     _count_nested_items,
     _pre_validate_patches,
     _resolve_path,

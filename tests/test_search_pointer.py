@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.search_pointer import search_pointer
+from text_to_json.tools.search_pointer import search_pointer
 
 
 @pytest.fixture

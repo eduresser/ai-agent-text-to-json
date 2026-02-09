@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.inspect_keys import inspect_keys
+from text_to_json.tools.inspect_keys import inspect_keys
 
 
 class TestInspectKeysRoot:

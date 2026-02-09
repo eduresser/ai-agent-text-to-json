@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from agent.state import messages_reducer, token_usage_reducer
+from text_to_json.agent.state import messages_reducer, token_usage_reducer
 
 
 # ======================================================================

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.apply_patches import SchemaPatchChecker, apply_patches
+from text_to_json.tools.apply_patches import SchemaPatchChecker, apply_patches
 
 
 # ======================================================================
