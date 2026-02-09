@@ -8,6 +8,11 @@ from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse
 
+from text_to_json.tools.json_pointer import (
+    decode_pointer_token,
+    parse_json_pointer,
+)
+
 
 class SchemaPatchChecker:
     _ANY_SCHEMA: dict[str, Any] = {"__any": True}
@@ -43,19 +48,8 @@ class SchemaPatchChecker:
             return all(cls._deep_equal(a[k], b[k]) for k in ak)
         return a == b
 
-    @staticmethod
-    def _decode_pointer_token(token: str) -> str:
-        return token.replace("~1", "/").replace("~0", "~")
-
-    @classmethod
-    def _parse_json_pointer(cls, path: str) -> list[str]:
-        if path == "" or path == "/":
-            return []
-        if not path.startswith("/"):
-            raise ValueError(
-                f'Invalid JSON Pointer (must start with "/"): {path}'
-            )
-        return [cls._decode_pointer_token(t) for t in path.split("/")[1:]]
+    _decode_pointer_token = staticmethod(decode_pointer_token)
+    _parse_json_pointer = staticmethod(parse_json_pointer)
 
     @classmethod
     def _get_at(cls, doc: Any, tokens: list[str]) -> dict[str, Any]:

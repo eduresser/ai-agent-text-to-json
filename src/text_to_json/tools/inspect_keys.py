@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import re
 from typing import Any, Optional
-from urllib.parse import unquote
+
+from text_to_json.tools.json_pointer import (
+    decode_pointer_token_with_url,
+    encode_pointer_token,
+)
 
 
 class JsonInspector:
@@ -44,7 +48,7 @@ class JsonInspector:
 
         for i, token in enumerate(parsed["tokens"]):
             cur_type = cls._safe_type(current)
-            escaped = str(token).replace("~", "~0").replace("/", "~1")
+            escaped = encode_pointer_token(str(token))
             next_ptr = f"{walked}/{escaped}"
 
             if cur_type == "array":
@@ -170,15 +174,10 @@ class JsonInspector:
 
     @staticmethod
     def _decode_pointer_token(token: str, try_url_decode: bool) -> str:
-        t = str(token).replace("~1", "/").replace("~0", "~")
-        if not try_url_decode:
-            return t
-        try:
-            if "%" in t:
-                t = unquote(t)
-        except Exception:
-            pass
-        return t
+        if try_url_decode:
+            return decode_pointer_token_with_url(str(token))
+        from text_to_json.tools.json_pointer import decode_pointer_token
+        return decode_pointer_token(str(token))
 
     @classmethod
     def _parse_json_pointer(

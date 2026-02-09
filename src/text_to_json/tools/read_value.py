@@ -4,6 +4,8 @@ import math
 import re
 from typing import Any, Optional
 
+from text_to_json.tools.json_pointer import parse_json_pointer_lenient
+
 
 class ReadValue:
     _DEFAULTS = {
@@ -135,20 +137,7 @@ class ReadValue:
             },
         }
 
-    @staticmethod
-    def _unescape_json_pointer_token(token: str) -> str:
-        return str(token).replace("~1", "/").replace("~0", "~")
-
-    @classmethod
-    def _parse_json_pointer(cls, path: str) -> list[str]:
-        if not isinstance(path, str):
-            raise ValueError("Invalid path: must be a string")
-        if path == "" or path == "/":
-            return []
-        if path[0] != "/":
-            path = "/" + path
-        raw = path.split("/")[1:]
-        return [cls._unescape_json_pointer_token(t) for t in raw]
+    _parse_json_pointer = staticmethod(parse_json_pointer_lenient)
 
     @staticmethod
     def _describe_type(v: Any) -> str:

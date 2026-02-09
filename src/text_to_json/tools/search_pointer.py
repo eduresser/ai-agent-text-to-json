@@ -11,6 +11,8 @@ from __future__ import annotations
 import unicodedata
 from typing import Any, Literal, Optional
 
+from text_to_json.tools.json_pointer import join_pointer as _join_pointer_util
+
 
 class SearchPointer:
     """Faithful port of the n8n SearchPointer class."""
@@ -217,12 +219,7 @@ class SearchPointer:
 
         return prev[m]
 
-    @staticmethod
-    def _join_pointer(base: str, token: str) -> str:
-        escaped = str(token).replace("~", "~0").replace("/", "~1")
-        if base == "":
-            return "/" + escaped
-        return base + "/" + escaped
+    _join_pointer = staticmethod(_join_pointer_util)
 
     @staticmethod
     def _is_primitive(v: Any) -> bool:
